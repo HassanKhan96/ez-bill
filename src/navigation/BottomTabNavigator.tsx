@@ -4,7 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/HomeScreen';
 import OrderStackNavigator from './OrderStackNavigator';
 import InventoryStackNavigator from './InventoryStackNavigator';
-import SettingsScreen from '../screens/SettingsScreen';
+import SettingsStackNavigator from './SettingsStackNavigator';
 import OrderHistoryStackNavigator from './OrderHistoryStackNavigator';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../theme/theme';
@@ -43,7 +43,7 @@ const BottomTabNavigator = () => {
             <Tab.Screen name="Order" component={OrderStackNavigator} />
             <Tab.Screen name="History" component={OrderHistoryStackNavigator} />
             <Tab.Screen name="Inventory" component={InventoryStackNavigator} />
-            <Tab.Screen name="Settings" component={SettingsScreen} />
+            <Tab.Screen name="Settings" component={SettingsStackNavigator} />
         </Tab.Navigator>
     );
 };

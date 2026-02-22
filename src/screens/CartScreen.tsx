@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCart, CartItem } from '../context/CartContext';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isConnected, printDocument, DocumentBuilder } from 'react-native-bt-thermal-printer';
 
 const CartScreen = () => {
     const navigation = useNavigation<any>();
@@ -19,6 +20,71 @@ const CartScreen = () => {
     const [taxRate, setTaxRate] = useState('10'); // Default 10% tax
     const [checkoutModalVisible, setCheckoutModalVisible] = useState(false);
     const [errors, setErrors] = useState<{ discount?: string; tax?: string }>({});
+
+    const printReceipt = async (items: CartItem[], totals: { subtotal: number; discount: number; tax: number; total: number }) => {
+        try {
+            const connected = await isConnected();
+            if (!connected) return; // No printer connected — skip silently
+
+            const doc = new DocumentBuilder(32)
+                .newline(4)
+                .heading('EZ-BILL STORE')
+                .center('123 Main Street')
+                .center('Tel: 0300-1234567')
+                .divider()
+                .row([
+                    { text: 'Item', width: 16, align: 'left' },
+                    { text: 'Qty', width: 6, align: 'center' },
+                    { text: 'Price', width: 10, align: 'right' },
+                ])
+                .divider().newline();
+
+            items.forEach((item) => {
+                const itemTotal = `RS ${(item.price * item.quantity).toFixed(2)}`;
+                doc.row([
+                    { text: item.name, width: 16, align: 'left' },
+                    { text: String(item.quantity), width: 6, align: 'center' },
+                    { text: itemTotal, width: 10, align: 'right' },
+                ]).newline();
+            });
+
+            doc
+                .divider()
+
+                .row([
+                    { text: 'Subtotal', width: 22, align: 'left' },
+                    { text: `RS ${totals.subtotal.toFixed(2)}`, width: 10, align: 'right' },
+                ]).newline();
+
+            if (totals.discount > 0) {
+                doc.row([
+                    { text: 'Discount', width: 22, align: 'left' },
+                    { text: `-RS ${totals.discount.toFixed(2)}`, width: 10, align: 'right' },
+                ])
+            }
+
+            if (totals.tax > 0) {
+                doc.row([
+                    { text: 'Tax', width: 22, align: 'left' },
+                    { text: `RS ${totals.tax.toFixed(2)}`, width: 10, align: 'right' },
+                ])
+            }
+
+            doc
+                .divider()
+
+                .row([
+                    { text: 'TOTAL', width: 22, align: 'left', style: { bold: true } },
+                    { text: `RS ${totals.total.toFixed(2)}`, width: 10, align: 'right', style: { bold: true } },
+                ])
+                .newline(3)
+                .newline(3);
+
+            await printDocument(doc);
+        } catch (error: any) {
+            Alert.alert('Print Failed', error?.message || 'Could not print receipt. Please check printer connection.');
+        }
+    };
 
     const validateAdjustments = () => {
         const newErrors: { discount?: string; tax?: string } = {};
@@ -74,6 +140,9 @@ const CartScreen = () => {
             const history = existingHistory ? JSON.parse(existingHistory) : [];
             const newHistory = [order, ...history];
             await AsyncStorage.setItem('@ez-bill:order_history', JSON.stringify(newHistory));
+
+            // Print receipt (non-blocking — order is already saved)
+            await printReceipt(cart, totals);
 
             clearCart();
             setCheckoutModalVisible(false);
